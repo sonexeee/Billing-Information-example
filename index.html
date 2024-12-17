@@ -52,7 +52,7 @@
             display: block;
         }
 
-        input[type="text"], input[type="number"], input[type="month"] {
+        input[type="text"], input[type="email"], input[type="number"], input[type="month"] {
             width: 100%;
             padding: 12px 14px;
             font-size: 1rem;
@@ -62,7 +62,7 @@
             transition: all 0.3s ease-in-out;
         }
 
-        input[type="text"]:focus, input[type="number"]:focus, input[type="month"]:focus {
+        input[type="text"]:focus, input[type="email"]:focus, input[type="number"]:focus, input[type="month"]:focus {
             border-color: #0056b3;
             outline: none;
             background-color: #ffffff;
@@ -137,6 +137,34 @@
             text-align: center;
             margin-top: 20px;
         }
+
+        /* Success/Error animation */
+        .message {
+            display: none;
+            padding: 10px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1rem;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .error {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            display: inline-block;
+        }
+
     </style>
 </head>
 <body>
@@ -153,6 +181,15 @@
                 <label for="card-number">Card Number</label>
                 <input type="text" id="card-number" placeholder="XXXX-XXXX-XXXX-XXXX" required oninput="detectCardType()">
                 <div class="card-type" id="card-type"></div>
+                <img src="" id="card-icon" class="card-icon" alt="Card Icon">
+            </div>
+            <div class="input-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="you@example.com" required>
+            </div>
+            <div class="input-group">
+                <label for="total-amount">Total Amount</label>
+                <input type="number" id="total-amount" placeholder="100.00" required>
             </div>
             <div class="input-group">
                 <label for="expiry-date">Expiration Date</label>
@@ -160,7 +197,7 @@
             </div>
             <div class="input-group">
                 <label for="cvv">CVV</label>
-                <input type="number" id="cvv" placeholder="123" required>
+                <input type="number" id="cvv" placeholder="123" required maxlength="4" oninput="validateCVV()">
             </div>
             <button type="submit" class="submit-btn">Submit Payment</button>
             <div class="error-message" id="error-message"></div>
@@ -168,6 +205,8 @@
             <div class="progress-bar" id="progress-bar">
                 <div class="progress" id="progress"></div>
             </div>
+            <div id="success-message" class="message success">Payment successful!</div>
+            <div id="error-message" class="message error">An error occurred. Please try again.</div>
         </form>
         <div class="secure-info">
             <img src="https://img.icons8.com/ios-filled/50/000000/lock.png" alt="Secure">
@@ -201,29 +240,31 @@
         function detectCardType() {
             const cardNumber = document.getElementById("card-number").value.replace(/\D/g, '');
             const cardTypeElement = document.getElementById("card-type");
+            const cardIcon = document.getElementById("card-icon");
 
             if (/^4/.test(cardNumber)) {
                 cardTypeElement.textContent = "Visa Card";
+                cardIcon.src = "https://img.icons8.com/ios-filled/50/000000/visa.png";
             } else if (/^5[1-5]/.test(cardNumber)) {
                 cardTypeElement.textContent = "MasterCard";
+                cardIcon.src = "https://img.icons8.com/ios-filled/50/000000/mastercard.png";
             } else if (/^3[47]/.test(cardNumber)) {
                 cardTypeElement.textContent = "American Express";
+                cardIcon.src = "https://img.icons8.com/ios-filled/50/000000/american-express.png";
             } else {
                 cardTypeElement.textContent = "Card Type: Unknown";
+                cardIcon.src = "";
             }
         }
 
-        // Expiry Date Validation
-        function validateExpiryDate(expiryDate) {
-            const [year, month] = expiryDate.split('-').map(val => val.trim());
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth() + 1;
-            const currentYear = currentDate.getFullYear();
-
-            if (!month || !year || month < 1 || month > 12 || year < currentYear || (year === currentYear && month < currentMonth)) {
-                return false;
+        // CVV Validation
+        function validateCVV() {
+            const cvv = document.getElementById("cvv").value;
+            if (cvv.length < 3 || cvv.length > 4) {
+                document.getElementById("cvv").setCustomValidity("CVV must be 3 or 4 digits.");
+            } else {
+                document.getElementById("cvv").setCustomValidity("");
             }
-            return true;
         }
 
         // Handle form submission
@@ -231,28 +272,31 @@
             event.preventDefault();
 
             const cardNumber = document.getElementById("card-number").value;
+            const email = document.getElementById("email").value;
+            const totalAmount = document.getElementById("total-amount").value;
             const expiryDate = document.getElementById("expiry-date").value;
             const cvv = document.getElementById("cvv").value;
             const errorMessage = document.getElementById("error-message");
+            const successMessage = document.getElementById("success-message");
             const loadingElement = document.getElementById("loading");
             const progressBar = document.getElementById("progress-bar");
             const progress = document.getElementById("progress");
 
-            // Reset error message and loading state
+            // Reset messages and states
             errorMessage.textContent = '';
+            successMessage.style.display = 'none';
             loadingElement.style.display = 'none';
             progressBar.style.display = 'none';
             progress.style.width = '0%';
 
-            // Validate card number using Luhn's algorithm
+            // Validate inputs
             if (!validateCardNumber(cardNumber)) {
                 errorMessage.textContent = "Invalid card number. Please check your card details.";
                 return;
             }
 
-            // Validate expiration date
-            if (!validateExpiryDate(expiryDate)) {
-                errorMessage.textContent = "Invalid or expired card. Please check your expiration date.";
+            if (isNaN(totalAmount) || totalAmount <= 0) {
+                errorMessage.textContent = "Please enter a valid amount.";
                 return;
             }
 
@@ -275,7 +319,11 @@
                 clearInterval(interval);
                 loadingElement.style.display = 'none';
                 progressBar.style.display = 'none';
-                alert('Payment submitted successfully!');
+                if (Math.random() > 0.5) {
+                    successMessage.style.display = 'block';
+                } else {
+                    errorMessage.textContent = "An error occurred. Please try again.";
+                }
             }, 2000);
         });
     </script>
