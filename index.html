@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Billing Screen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', sans-serif;
+            background: #f7f8fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="text"], input[type="number"], input[type="month"] {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 1rem;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            background-color: #f4f4f4;
+            transition: all 0.3s ease-in-out;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, input[type="month"]:focus {
+            border-color: #0056b3;
+            outline: none;
+            background-color: #ffffff;
+            box-shadow: 0 0 5px rgba(0, 86, 179, 0.3);
+        }
+
+        .card-type {
+            font-size: 1.1rem;
+            color: #0056b3;
+            margin-top: 10px;
+        }
+
+        .error-message {
+            color: red;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            background: #0056b3;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: #004085;
+        }
+
+        .secure-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #777;
+            margin-top: 20px;
+        }
+
+        .secure-info img {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar .progress {
+            width: 0;
+            height: 100%;
+            background: #0056b3;
+            border-radius: 5px;
+        }
+
+        .loading {
+            display: none;
+            font-size: 1rem;
+            color: #0056b3;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Billing Information</h1>
+        </div>
+        <form id="payment-form">
+            <div class="input-group">
+                <label for="name">Cardholder Name</label>
+                <input type="text" id="name" placeholder="John Doe" required>
+            </div>
+            <div class="input-group">
+                <label for="card-number">Card Number</label>
+                <input type="text" id="card-number" placeholder="XXXX-XXXX-XXXX-XXXX" required oninput="detectCardType()">
+                <div class="card-type" id="card-type"></div>
+            </div>
+            <div class="input-group">
+                <label for="expiry-date">Expiration Date</label>
+                <input type="month" id="expiry-date" required>
+            </div>
+            <div class="input-group">
+                <label for="cvv">CVV</label>
+                <input type="number" id="cvv" placeholder="123" required>
+            </div>
+            <button type="submit" class="submit-btn">Submit Payment</button>
+            <div class="error-message" id="error-message"></div>
+            <div class="loading" id="loading">Processing...</div>
+            <div class="progress-bar" id="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+        </form>
+        <div class="secure-info">
+            <img src="https://img.icons8.com/ios-filled/50/000000/lock.png" alt="Secure">
+            <p>Secure Payment - Your data is safe</p>
+        </div>
+    </div>
+
+    <script>
+        // Luhn's Algorithm to validate card number
+        function validateCardNumber(cardNumber) {
+            const cardNumArray = cardNumber.replace(/\D/g, '').split('');
+            let sum = 0;
+            let shouldDouble = false;
+
+            for (let i = cardNumArray.length - 1; i >= 0; i--) {
+                let digit = parseInt(cardNumArray[i]);
+
+                if (shouldDouble) {
+                    digit *= 2;
+                    if (digit > 9) digit -= 9;
+                }
+
+                sum += digit;
+                shouldDouble = !shouldDouble;
+            }
+
+            return sum % 10 === 0;
+        }
+
+        // Card Type Detection
+        function detectCardType() {
+            const cardNumber = document.getElementById("card-number").value.replace(/\D/g, '');
+            const cardTypeElement = document.getElementById("card-type");
+
+            if (/^4/.test(cardNumber)) {
+                cardTypeElement.textContent = "Visa Card";
+            } else if (/^5[1-5]/.test(cardNumber)) {
+                cardTypeElement.textContent = "MasterCard";
+            } else if (/^3[47]/.test(cardNumber)) {
+                cardTypeElement.textContent = "American Express";
+            } else {
+                cardTypeElement.textContent = "Card Type: Unknown";
+            }
+        }
+
+        // Expiry Date Validation
+        function validateExpiryDate(expiryDate) {
+            const [year, month] = expiryDate.split('-').map(val => val.trim());
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+
+            if (!month || !year || month < 1 || month > 12 || year < currentYear || (year === currentYear && month < currentMonth)) {
+                return false;
+            }
+            return true;
+        }
+
+        // Handle form submission
+        document.getElementById("payment-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const cardNumber = document.getElementById("card-number").value;
+            const expiryDate = document.getElementById("expiry-date").value;
+            const cvv = document.getElementById("cvv").value;
+            const errorMessage = document.getElementById("error-message");
+            const loadingElement = document.getElementById("loading");
+            const progressBar = document.getElementById("progress-bar");
+            const progress = document.getElementById("progress");
+
+            // Reset error message and loading state
+            errorMessage.textContent = '';
+            loadingElement.style.display = 'none';
+            progressBar.style.display = 'none';
+            progress.style.width = '0%';
+
+            // Validate card number using Luhn's algorithm
+            if (!validateCardNumber(cardNumber)) {
+                errorMessage.textContent = "Invalid card number. Please check your card details.";
+                return;
+            }
+
+            // Validate expiration date
+            if (!validateExpiryDate(expiryDate)) {
+                errorMessage.textContent = "Invalid or expired card. Please check your expiration date.";
+                return;
+            }
+
+            // Show loading and progress bar
+            loadingElement.style.display = 'block';
+            progressBar.style.display = 'block';
+
+            let progressWidth = 0;
+            const interval = setInterval(() => {
+                if (progressWidth < 100) {
+                    progressWidth += 10;
+                    progress.style.width = progressWidth + '%';
+                } else {
+                    clearInterval(interval);
+                }
+            }, 300);
+
+            // Simulate payment processing
+            setTimeout(() => {
+                clearInterval(interval);
+                loadingElement.style.display = 'none';
+                progressBar.style.display = 'none';
+                alert('Payment submitted successfully!');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
